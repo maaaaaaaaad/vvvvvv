@@ -1,1 +1,14 @@
-.idea
+/bin/
+/build/
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+/vendor/
+.idea/
+.vscode/
+.DS_Store
+.env
+.env.*
