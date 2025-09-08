@@ -2,16 +2,19 @@ package graphql
 
 import (
 	"encoding/json"
-	"jello-mark-backend/internal/application"
+	"jello-mark-backend/internal/domain"
+	"jello-mark-backend/internal/ports/inbound"
 	"net/http"
 	"strconv"
 	"time"
 
 	gql "github.com/graphql-go/graphql"
+	"github.com/graphql-go/handler"
 )
 
 type Handler struct {
-	Users application.UserService
+	Users             inbound.UserService
+	PlaygroundEnabled bool
 }
 
 type gqlReq struct {
@@ -26,7 +29,26 @@ type userDTO struct {
 	CreatedAt string `json:"createdAt"`
 }
 
-func schema(users application.UserService) (
+func NewGraphQLHandler(
+	users inbound.UserService,
+	playgroundEnabled bool,
+) http.Handler {
+	s, err := schema(users)
+	if err != nil {
+		panic(err)
+	}
+
+	return handler.New(
+		&handler.Config{
+			Schema:     &s,
+			Pretty:     true,
+			GraphiQL:   playgroundEnabled,
+			Playground: playgroundEnabled,
+		},
+	)
+}
+
+func schema(users inbound.UserService) (
 	gql.Schema,
 	error,
 ) {
@@ -82,12 +104,13 @@ func schema(users application.UserService) (
 							len(list),
 						)
 						for _, u := range list {
+							user := domain.User(u)
 							res = append(
 								res,
 								userDTO{
-									ID:        string(u.ID),
-									Name:      u.Name,
-									CreatedAt: u.CreatedAt.UTC().Format(time.RFC3339),
+									ID:        string(user.ID),
+									Name:      user.Name,
+									CreatedAt: user.CreatedAt.UTC().Format(time.RFC3339),
 								},
 							)
 						}
@@ -121,10 +144,11 @@ func schema(users application.UserService) (
 						if err != nil {
 							return nil, err
 						}
+						user := domain.User(u)
 						return userDTO{
-							ID:        string(u.ID),
-							Name:      u.Name,
-							CreatedAt: u.CreatedAt.UTC().Format(time.RFC3339),
+							ID:        string(user.ID),
+							Name:      user.Name,
+							CreatedAt: user.CreatedAt.UTC().Format(time.RFC3339),
 						}, nil
 					},
 				},
