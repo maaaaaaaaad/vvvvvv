@@ -85,7 +85,7 @@ func Load() (
 			),
 			User: getenv(
 				"DB_USER",
-				"root",
+				"mad",
 			),
 			Password: getenv(
 				"DB_PASSWORD",
@@ -93,7 +93,7 @@ func Load() (
 			),
 			Name: getenv(
 				"DB_NAME",
-				"app",
+				"main",
 			),
 			MaxOpenConns: getint(
 				"DB_MAX_OPEN_CONNS",
