@@ -1,27 +1,14 @@
 package graphql
 
 import (
-	"encoding/json"
 	"jello-mark-backend/internal/domain"
 	"jello-mark-backend/internal/ports/inbound"
 	"net/http"
-	"strconv"
 	"time"
 
 	gql "github.com/graphql-go/graphql"
 	"github.com/graphql-go/handler"
 )
-
-type Handler struct {
-	Users             inbound.UserService
-	PlaygroundEnabled bool
-}
-
-type gqlReq struct {
-	Query         string                 `json:"query"`
-	OperationName string                 `json:"operationName"`
-	Variables     map[string]interface{} `json:"variables"`
-}
 
 type userDTO struct {
 	ID        string `json:"id"`
@@ -161,53 +148,4 @@ func schema(users inbound.UserService) (
 			Mutation: mutation,
 		},
 	)
-}
-
-func (h Handler) ServeHTTP(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("method not allowed"))
-		return
-	}
-	dec := json.NewDecoder(r.Body)
-	var req gqlReq
-	if err := dec.Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("invalid request"))
-		return
-	}
-	s, err := schema(h.Users)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("schema error"))
-		return
-	}
-	res := gql.Do(
-		gql.Params{
-			Schema:         s,
-			RequestString:  req.Query,
-			VariableValues: req.Variables,
-			OperationName:  req.OperationName,
-			Context:        r.Context(),
-		},
-	)
-	bs, err := json.Marshal(res)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("encode error"))
-		return
-	}
-	w.Header().Set(
-		"Content-Type",
-		"application/json",
-	)
-	w.Header().Set(
-		"Content-Length",
-		strconv.Itoa(len(bs)),
-	)
-	w.WriteHeader(http.StatusOK)
-	w.Write(bs)
 }
