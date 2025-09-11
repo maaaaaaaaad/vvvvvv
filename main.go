@@ -18,9 +18,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -54,19 +55,8 @@ func main() {
 	} else {
 		userRepo = mem.NewUserRepo()
 	}
-	var counter uint64
 	idgen := func() domain.UserID {
-		n := atomic.AddUint64(
-			&counter,
-			1,
-		)
-		return domain.UserID(
-			fmt.Sprintf(
-				"%d-%d",
-				time.Now().UTC().UnixNano(),
-				n,
-			),
-		)
+		return domain.UserID(uuid.NewString())
 	}
 	clk := system.NewClock()
 	usvc := application.NewUserService(
