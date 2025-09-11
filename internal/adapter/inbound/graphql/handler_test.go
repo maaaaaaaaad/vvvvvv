@@ -19,43 +19,112 @@ func (f fixedClock) Now() time.Time { return f.t }
 
 func TestGraphQL_HealthAndUserFlow(t *testing.T) {
 	repo := memory.NewUserRepo()
-	clk := fixedClock{t: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}
+	clk := fixedClock{
+		t: time.Date(
+			2024,
+			1,
+			1,
+			0,
+			0,
+			0,
+			0,
+			time.UTC,
+		),
+	}
 	idgen := func() domain.UserID { return domain.UserID("u-1") }
-	svc := application.NewUserService(repo, clk, idgen)
-	h := Handler{Users: svc}
+	svc := application.NewUserService(
+		repo,
+		clk,
+		idgen,
+	)
+	h := NewGraphQLHandler(
+		svc,
+		false,
+	)
 
-	do := func(query string, vars map[string]interface{}) *httptest.ResponseRecorder {
-		body, _ := json.Marshal(map[string]interface{}{"query": query, "variables": vars})
-		r := httptest.NewRequest(http.MethodPost, "/graphql", bytes.NewReader(body))
+	do := func(
+		query string,
+		vars map[string]interface{},
+	) *httptest.ResponseRecorder {
+		body, _ := json.Marshal(
+			map[string]interface{}{
+				"query":     query,
+				"variables": vars,
+			},
+		)
+		r := httptest.NewRequest(
+			http.MethodPost,
+			"/graphql",
+			bytes.NewReader(body),
+		)
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, r)
+		h.ServeHTTP(
+			w,
+			r,
+		)
 		return w
 	}
 
-	w := do("query{health}", nil)
+	w := do(
+		"query{health}",
+		nil,
+	)
 	if w.Code != 200 {
-		t.Fatalf("health code=%d", w.Code)
+		t.Fatalf(
+			"health code=%d",
+			w.Code,
+		)
 	}
 	b, _ := io.ReadAll(w.Body)
-	if !bytes.Contains(b, []byte("ok")) {
-		t.Fatalf("health body=%s", string(b))
+	if !bytes.Contains(
+		b,
+		[]byte("ok"),
+	) {
+		t.Fatalf(
+			"health body=%s",
+			string(b),
+		)
 	}
 
-	w = do("mutation($name:String!){createUser(name:$name){id name createdAt}}", map[string]interface{}{"name": "alice"})
+	w = do(
+		"mutation($name:String!){createUser(name:$name){id name createdAt}}",
+		map[string]interface{}{"name": "alice"},
+	)
 	if w.Code != 200 {
-		t.Fatalf("create code=%d", w.Code)
+		t.Fatalf(
+			"create code=%d",
+			w.Code,
+		)
 	}
 	b, _ = io.ReadAll(w.Body)
-	if !bytes.Contains(b, []byte("alice")) {
-		t.Fatalf("create body=%s", string(b))
+	if !bytes.Contains(
+		b,
+		[]byte("alice"),
+	) {
+		t.Fatalf(
+			"create body=%s",
+			string(b),
+		)
 	}
 
-	w = do("query{users{ id name createdAt }}", nil)
+	w = do(
+		"query{users{ id name createdAt }}",
+		nil,
+	)
 	if w.Code != 200 {
-		t.Fatalf("users code=%d", w.Code)
+		t.Fatalf(
+			"users code=%d",
+			w.Code,
+		)
 	}
 	b, _ = io.ReadAll(w.Body)
-	if !bytes.Contains(b, []byte("alice")) {
-		t.Fatalf("users body=%s", string(b))
+	if !bytes.Contains(
+		b,
+		[]byte("alice"),
+	) {
+		t.Fatalf(
+			"users body=%s",
+			string(b),
+		)
 	}
 }
