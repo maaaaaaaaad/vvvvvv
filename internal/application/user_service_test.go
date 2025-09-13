@@ -2,18 +2,73 @@ package application
 
 import (
 	"context"
-	"jello-mark-backend/internal/adapter/outbound/memory"
+	"errors"
 	"jello-mark-backend/internal/domain"
+	"sync"
 	"testing"
 	"time"
 )
 
 type fixedClock struct{ t time.Time }
 
+type testUserRepo struct {
+	mu    sync.RWMutex
+	items []domain.User
+}
+
+func newTestUserRepo() *testUserRepo {
+	return &testUserRepo{
+		items: make(
+			[]domain.User,
+			0,
+			16,
+		),
+	}
+}
+
+func (r *testUserRepo) Create(
+	ctx context.Context,
+	u domain.User,
+) error {
+	if u.ID == "" {
+		return errors.New("id required")
+	}
+	r.mu.Lock()
+	r.items = append(
+		r.items,
+		u,
+	)
+	r.mu.Unlock()
+	return nil
+}
+
+func (r *testUserRepo) List(
+	ctx context.Context,
+	limit int,
+) (
+	[]domain.User,
+	error,
+) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if limit > len(r.items) {
+		limit = len(r.items)
+	}
+	res := make(
+		[]domain.User,
+		limit,
+	)
+	copy(
+		res,
+		r.items[:limit],
+	)
+	return res, nil
+}
+
 func (f fixedClock) Now() time.Time { return f.t }
 
 func TestUserService_CreateAndList(t *testing.T) {
-	repo := memory.NewUserRepo()
+	repo := newTestUserRepo()
 	fc := fixedClock{
 		t: time.Date(
 			2024,
