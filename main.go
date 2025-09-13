@@ -6,13 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"jello-mark-backend/internal/adapter/inbound/graphql"
-	mem "jello-mark-backend/internal/adapter/outbound/memory"
 	mysqlrepo "jello-mark-backend/internal/adapter/outbound/mysql"
 	"jello-mark-backend/internal/adapter/outbound/system"
 	"jello-mark-backend/internal/application"
 	"jello-mark-backend/internal/config"
 	"jello-mark-backend/internal/domain"
-	"jello-mark-backend/internal/ports/outbound"
 	"jello-mark-backend/internal/server"
 	"log"
 	"net/http"
@@ -33,28 +31,23 @@ func main() {
 		)
 	}
 	printStartupInfo(cfg)
-	var userRepo outbound.UserRepository
-	if cfg.Env == config.EnvProd || cfg.Env == config.EnvLocal {
-		db, err := mysqlrepo.NewDB(cfg.DB)
+	db, err := mysqlrepo.NewDB(cfg.DB)
+	if err != nil {
+		log.Fatalf(
+			"db error: %v",
+			err,
+		)
+	}
+	defer func(db *sql.DB) {
+		err := db.Close()
 		if err != nil {
-			log.Fatalf(
-				"db error: %v",
+			log.Printf(
+				"error closing database: %v",
 				err,
 			)
 		}
-		defer func(db *sql.DB) {
-			err := db.Close()
-			if err != nil {
-				log.Printf(
-					"error closing database: %v",
-					err,
-				)
-			}
-		}(db)
-		userRepo = mysqlrepo.NewUserRepo(db)
-	} else {
-		userRepo = mem.NewUserRepo()
-	}
+	}(db)
+	userRepo := mysqlrepo.NewUserRepo(db)
 	idgen := func() domain.UserID {
 		return domain.UserID(uuid.NewString())
 	}
